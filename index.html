@@ -127,6 +127,22 @@
           </div>
         </div>
 
+        <!-- Video Quality Settings -->
+        <div class="w-full flex flex-col gap-2 bg-zinc-950/40 border border-zinc-900 p-4 rounded-2xl">
+          <span class="text-xs font-bold text-zinc-400">🎬 녹화 화질 설정</span>
+          <div class="grid grid-cols-3 gap-2 bg-zinc-900/80 p-1 rounded-xl border border-zinc-850">
+            <button id="qualityTabLow" onclick="selectVideoQuality('low')" class="py-2 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white leading-tight">
+              저화질<br><span class="text-[9px] font-normal opacity-80">(용량 적음)</span>
+            </button>
+            <button id="qualityTabMedium" onclick="selectVideoQuality('medium')" class="py-2 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white leading-tight">
+              일반<br><span class="text-[9px] font-normal opacity-80">(용량 중간)</span>
+            </button>
+            <button id="qualityTabHigh" onclick="selectVideoQuality('high')" class="py-2 text-xs font-bold rounded-lg transition-all bg-cyan-500 text-black leading-tight">
+              고화질<br><span class="text-[9px] font-normal opacity-80">(용량 큼)</span>
+            </button>
+          </div>
+        </div>
+
         <button onclick="startCountdown()" class="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-black font-extrabold text-base rounded-2xl shadow-lg shadow-cyan-500/20 transition transform hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2">
           🔴 촬영 시작
         </button>
@@ -253,6 +269,9 @@
     let timerMode = 'direct'; // 'direct' or 'delay'
     let timerSeconds = 0; // 0 means direct/immediate
 
+    // Video quality state
+    let videoQuality = 'high'; // 'low', 'medium', 'high'
+
     // --- App Init ---
     window.onload = async () => {
       showStep('stepLobby');
@@ -274,10 +293,21 @@
       try {
         if (stream) stopCamera();
         
+        let width = 1920;
+        let height = 1080;
+        
+        if (videoQuality === 'medium') {
+          width = 1280;
+          height = 720;
+        } else if (videoQuality === 'low') {
+          width = 854;
+          height = 480;
+        }
+        
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            width: { ideal: 1920 }, // 1080p FHD ideal resolution
-            height: { ideal: 1080 },
+            width: { ideal: width },
+            height: { ideal: height },
             facingMode: currentFacingMode
           },
           audio: true // 음성 지원 활성화
@@ -313,6 +343,28 @@
       }
       
       await initLobbyCamera();
+    }
+
+    // --- Quality Controls ---
+    function selectVideoQuality(quality) {
+      videoQuality = quality;
+      const tabLow = document.getElementById('qualityTabLow');
+      const tabMedium = document.getElementById('qualityTabMedium');
+      const tabHigh = document.getElementById('qualityTabHigh');
+      
+      [tabLow, tabMedium, tabHigh].forEach(tab => {
+        tab.className = "py-2 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white leading-tight";
+      });
+      
+      if (quality === 'low') {
+        tabLow.className = "py-2 text-xs font-bold rounded-lg transition-all bg-cyan-500 text-black leading-tight";
+      } else if (quality === 'medium') {
+        tabMedium.className = "py-2 text-xs font-bold rounded-lg transition-all bg-cyan-500 text-black leading-tight";
+      } else if (quality === 'high') {
+        tabHigh.className = "py-2 text-xs font-bold rounded-lg transition-all bg-cyan-500 text-black leading-tight";
+      }
+      
+      initLobbyCamera();
     }
 
     // --- Timer Controls ---
@@ -393,26 +445,33 @@
     function startRecordingFlow() {
       recordedChunks = [];
       
-      // 고화질 비트레이트 (5Mbps) 설정 및 코덱 매칭
+      let bitrate = 5000000;
+      if (videoQuality === 'medium') {
+        bitrate = 2500000;
+      } else if (videoQuality === 'low') {
+        bitrate = 1000000;
+      }
+
+      // 비트레이트 설정 및 코덱 매칭
       let options = { 
         mimeType: 'video/webm;codecs=vp9',
-        videoBitsPerSecond: 5000000
+        videoBitsPerSecond: bitrate
       };
       if (!MediaRecorder.isTypeSupported(options.mimeType)) {
         options = { 
           mimeType: 'video/webm;codecs=vp8',
-          videoBitsPerSecond: 5000000
+          videoBitsPerSecond: bitrate
         };
       }
       if (!MediaRecorder.isTypeSupported(options.mimeType)) {
         options = { 
           mimeType: 'video/webm',
-          videoBitsPerSecond: 5000000
+          videoBitsPerSecond: bitrate
         };
       }
       if (!MediaRecorder.isTypeSupported(options.mimeType)) {
         options = { 
-          videoBitsPerSecond: 5000000
+          videoBitsPerSecond: bitrate
         };
       }
 
