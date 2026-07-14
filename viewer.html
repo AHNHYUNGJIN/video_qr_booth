@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>B-side Video Viewer — 비디오 소장하기</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+  <style>
+    body {
+      font-family: 'Pretendard', sans-serif;
+      background: radial-gradient(circle at center, #151724 0%, #090a0f 100%);
+    }
+    .neon-glow-btn {
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+      border: 1px solid rgba(6, 182, 212, 0.6);
+    }
+    .glass-box {
+      background: rgba(25, 28, 41, 0.7);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+  </style>
+</head>
+<body class="text-zinc-100 min-h-screen flex flex-col justify-between p-4 selection:bg-cyan-500 selection:text-black">
+
+  <main class="flex-grow flex flex-col items-center justify-center max-w-md mx-auto w-full gap-5">
+    
+    <!-- Header Logo -->
+    <div class="text-center">
+      <h1 class="text-lg font-black tracking-tight text-white flex items-center justify-center gap-1.5">
+        B-<span class="text-cyan-400 font-bold">side</span> Video Viewer
+      </h1>
+      <p class="text-[10px] text-zinc-500 mt-0.5">24시간 보관 후 자동 파기되는 안심 링크입니다.</p>
+    </div>
+
+    <!-- Mobile In-App Browser Warning Banner -->
+    <div id="inAppBrowserAlert" class="hidden w-full bg-amber-950/60 border border-amber-500/20 p-3.5 rounded-2xl text-xs text-amber-400 leading-relaxed shadow-lg">
+      <p class="font-black flex items-center gap-1.5 mb-1.5 text-sm">
+        <span>⚠️</span> 인앱 브라우저 감지 안내
+      </p>
+      현재 카카오톡, 네이버 또는 SNS 앱 내의 스캐너로 접속하셨습니다. 앱 보안 정책상 <strong>직접 다운로드가 제한될 수 있습니다.</strong><br><br>
+      동영상을 폰 갤러리에 저장하시려면 <strong>[오른쪽 상단 점 3개 ፧]</strong> 또는 <strong>[내보내기 버튼]</strong>을 누르신 후 <strong>[기본 브라우저로 열기]</strong> 또는 <strong>[Safari/Chrome으로 열기]</strong>를 선택해 주세요.
+    </div>
+
+    <!-- Video Preview Card -->
+    <div class="relative w-full aspect-[9/16] max-h-[500px] bg-[#0c0d14] rounded-3xl overflow-hidden border border-zinc-800/80 shadow-2xl flex items-center justify-center">
+      <video id="videoPlayer" controls autoplay loop playsinline class="w-full h-full object-cover"></video>
+      <div id="loadingPlaceholder" class="absolute inset-0 bg-[#0c0d14] flex flex-col items-center justify-center text-sm text-zinc-400">
+        <span class="animate-spin text-2xl mb-2">🌀</span> 비디오 불러오는 중...
+      </div>
+    </div>
+
+    <!-- Actions Box -->
+    <div class="w-full flex flex-col gap-3">
+      <!-- Download Button -->
+      <a id="btnDownload" href="#" class="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-black font-extrabold text-base rounded-2xl text-center shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2 neon-glow-btn">
+        📥 동영상 폰에 저장하기
+      </a>
+      
+      <!-- iOS / General alternative guidance description -->
+      <p class="text-[10px] text-zinc-500 text-center leading-relaxed">
+        버튼을 눌렀을 때 동영상이 다운로드되지 않고 새 창에서 비디오만 재생된다면,<br>
+        <strong>화면의 비디오를 길게 꾹 누르거나 하단 공유 버튼을 눌러 "비디오 저장"</strong>을 터치해 주시기 바랍니다.
+      </p>
+    </div>
+
+  </main>
+
+  <footer class="text-center py-4 text-zinc-700 text-[10px] border-t border-zinc-900/50 mt-6 max-w-xs mx-auto w-full">
+    <p>© 2026 B-side Video. Cloud Stream Terminal.</p>
+  </footer>
+
+  <script>
+    // --- Helper to get query parameters ---
+    function getQueryParam(name) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(name);
+    }
+
+    // --- Detect In-App Browsers (Kakao, Naver, Instagram, etc) ---
+    function checkInAppBrowser() {
+      const ua = navigator.userAgent.toLowerCase();
+      const isInApp = (
+        ua.indexOf('kakaotalk') > -1 || 
+        ua.indexOf('naver') > -1 || 
+        ua.indexOf('instagram') > -1 || 
+        ua.indexOf('fbav') > -1 || 
+        ua.indexOf('line') > -1
+      );
+      
+      if (isInApp) {
+        document.getElementById('inAppBrowserAlert').classList.remove('hidden');
+      }
+    }
+
+    window.onload = () => {
+      checkInAppBrowser();
+
+      const videoUrl = getQueryParam('v');
+      const player = document.getElementById('videoPlayer');
+      const placeholder = document.getElementById('loadingPlaceholder');
+      const btnDownload = document.getElementById('btnDownload');
+
+      if (!videoUrl) {
+        placeholder.innerHTML = "❌ 유효하지 않은 비디오 주소입니다.";
+        btnDownload.style.opacity = '0.5';
+        btnDownload.style.pointerEvents = 'none';
+        btnDownload.textContent = "불러오기 실패";
+        return;
+      }
+
+      // Load video url into player
+      player.src = videoUrl;
+      player.onloadeddata = () => {
+        placeholder.classList.add('hidden');
+      };
+      
+      player.onerror = () => {
+        placeholder.innerHTML = "❌ 비디오 로드 실패 (파일이 삭제되었거나 서버 에러)";
+      };
+
+      // Set download link actions
+      btnDownload.href = videoUrl;
+      btnDownload.setAttribute('download', `bside-video-${Date.now()}.mp4`);
+      
+      // 모바일 전용 백업 저장 처리 (새창 오픈을 통해 이미지/동영상 저장 창으로 우회)
+      btnDownload.onclick = (e) => {
+        // 인앱 브라우저 감지 시 리다이렉션 주의 경고 및 새창 오픈 폴백
+        const ua = navigator.userAgent.toLowerCase();
+        if (ua.indexOf('kakaotalk') > -1) {
+          // 카카오톡의 경우 내장 브라우저 차단으로 인한 새 탭 오픈 유도
+          window.open(videoUrl, '_blank');
+          e.preventDefault();
+        }
+      };
+    };
+  </script>
+</body>
+</html>
