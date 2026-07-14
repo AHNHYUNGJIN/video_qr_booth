@@ -572,8 +572,38 @@
       document.getElementById('resultQrImage').src = qrImgUrl;
     }
 
+    function showToast(message) {
+      const exist = document.getElementById('app-toast');
+      if (exist) exist.remove();
+      
+      const toast = document.createElement('div');
+      toast.id = 'app-toast';
+      toast.className = "fixed bottom-8 left-1/2 -translate-x-1/2 bg-zinc-900/95 border border-cyan-500/40 text-cyan-400 px-5 py-3 rounded-2xl text-xs font-bold z-[9999] shadow-2xl flex items-center gap-2 transition-all duration-300 opacity-0 translate-y-4";
+      toast.innerHTML = `<span>📥</span> <span>${message}</span>`;
+      
+      document.body.appendChild(toast);
+      
+      // Force reflow
+      toast.offsetHeight;
+      
+      toast.classList.remove('opacity-0', 'translate-y-4');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-4');
+        setTimeout(() => {
+          toast.remove();
+        }, 300);
+      }, 2500);
+    }
+
     function downloadDirectly() {
-      if (!videoUrl) return;
+      if (!videoUrl) {
+        showToast("다운로드할 동영상이 존재하지 않습니다.");
+        return;
+      }
+      showToast("동영상 다운로드를 시작합니다. 다운로드 폴더를 확인해 주세요!");
       const link = document.createElement('a');
       const ext = mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
       link.download = `bside-video-${Date.now()}.${ext}`;
