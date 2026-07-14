@@ -90,13 +90,45 @@
         <div class="relative w-full aspect-[9/16] max-h-[550px] bg-[#0c0d14] rounded-3xl overflow-hidden neon-border-cyan flex items-center justify-center shadow-2xl">
           <video id="lobbyVideo" autoplay playsinline class="mirror-view w-full h-full object-cover"></video>
           <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none"></div>
+          
+          <!-- Camera Switch Button -->
+          <button onclick="toggleCamera()" class="absolute top-4 right-4 z-10 bg-black/60 hover:bg-black/80 backdrop-blur border border-zinc-800 text-xs text-white px-3 py-2 rounded-xl flex items-center gap-1.5 transition active:scale-95">
+            🔄 카메라 전환
+          </button>
+
           <span class="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 backdrop-blur border border-zinc-800 text-[10px] text-zinc-400 px-3 py-1 rounded-full">
             카메라 라이브 화면
           </span>
         </div>
 
+        <!-- Timer Settings -->
+        <div class="w-full flex flex-col gap-2 bg-zinc-950/40 border border-zinc-900 p-4 rounded-2xl">
+          <span class="text-xs font-bold text-zinc-400">⏱️ 촬영 타이머 설정</span>
+          <div class="grid grid-cols-2 gap-2 bg-zinc-900/80 p-1 rounded-xl border border-zinc-850">
+            <button id="timerTabDirect" onclick="selectTimerMode('direct')" class="py-2.5 text-xs font-bold rounded-lg transition-all bg-cyan-500 text-black">
+              바로 촬영
+            </button>
+            <button id="timerTabDelay" onclick="selectTimerMode('delay')" class="py-2.5 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white">
+              타이머 촬영
+            </button>
+          </div>
+          
+          <!-- Timer Seconds Selector -->
+          <div id="timerSecondsSelector" class="hidden grid grid-cols-3 gap-2 mt-1">
+            <button onclick="setTimerSeconds(3)" id="btnTimer3" class="py-2 bg-zinc-850 hover:bg-zinc-800 text-xs font-bold rounded-lg border border-cyan-500/50 text-cyan-400 transition-all">
+              3초
+            </button>
+            <button onclick="setTimerSeconds(5)" id="btnTimer5" class="py-2 bg-zinc-850 hover:bg-zinc-800 text-xs font-bold rounded-lg border border-transparent text-zinc-400 transition-all">
+              5초
+            </button>
+            <button onclick="setTimerSeconds(10)" id="btnTimer10" class="py-2 bg-zinc-850 hover:bg-zinc-800 text-xs font-bold rounded-lg border border-transparent text-zinc-400 transition-all">
+              10초
+            </button>
+          </div>
+        </div>
+
         <button onclick="startCountdown()" class="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-black font-extrabold text-base rounded-2xl shadow-lg shadow-cyan-500/20 transition transform hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2">
-          🔴 촬영 카운트다운 시작
+          🔴 촬영 시작
         </button>
       </section>
 
@@ -214,6 +246,13 @@
     let secondsRecorded = 0;
     const maxRecordingSeconds = 60; // 60초 시간 제한
 
+    // Camera state
+    let currentFacingMode = 'user'; // 'user' (front) or 'environment' (back)
+
+    // Timer state
+    let timerMode = 'direct'; // 'direct' or 'delay'
+    let timerSeconds = 0; // 0 means direct/immediate
+
     // --- App Init ---
     window.onload = async () => {
       showStep('stepLobby');
@@ -239,7 +278,7 @@
           video: {
             width: { ideal: 1920 }, // 1080p FHD ideal resolution
             height: { ideal: 1080 },
-            facingMode: 'user'
+            facingMode: currentFacingMode
           },
           audio: true // 음성 지원 활성화
         });
@@ -258,28 +297,96 @@
       }
     }
 
+    async function toggleCamera() {
+      currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      
+      const lobbyVideo = document.getElementById('lobbyVideo');
+      const recordingVideo = document.getElementById('recordingVideo');
+      
+      // mirror front camera but not back camera
+      if (currentFacingMode === 'user') {
+        lobbyVideo.classList.add('mirror-view');
+        recordingVideo.classList.add('mirror-view');
+      } else {
+        lobbyVideo.classList.remove('mirror-view');
+        recordingVideo.classList.remove('mirror-view');
+      }
+      
+      await initLobbyCamera();
+    }
+
+    // --- Timer Controls ---
+    function selectTimerMode(mode) {
+      timerMode = mode;
+      const tabDirect = document.getElementById('timerTabDirect');
+      const tabDelay = document.getElementById('timerTabDelay');
+      const selector = document.getElementById('timerSecondsSelector');
+      
+      if (mode === 'direct') {
+        timerSeconds = 0;
+        tabDirect.className = "py-2.5 text-xs font-bold rounded-lg transition-all bg-cyan-500 text-black";
+        tabDelay.className = "py-2.5 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white";
+        selector.classList.add('hidden');
+      } else {
+        timerSeconds = 3; // default delay is 3s
+        tabDirect.className = "py-2.5 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white";
+        tabDelay.className = "py-2.5 text-xs font-bold rounded-lg transition-all bg-cyan-500 text-black";
+        selector.classList.remove('hidden');
+        updateTimerSecondsUI();
+      }
+    }
+
+    function setTimerSeconds(secs) {
+      timerSeconds = secs;
+      updateTimerSecondsUI();
+    }
+
+    function updateTimerSecondsUI() {
+      const btn3 = document.getElementById('btnTimer3');
+      const btn5 = document.getElementById('btnTimer5');
+      const btn10 = document.getElementById('btnTimer10');
+      
+      [btn3, btn5, btn10].forEach(btn => {
+        btn.className = "py-2 bg-zinc-850 hover:bg-zinc-800 text-xs font-bold rounded-lg border border-transparent text-zinc-400 transition-all";
+      });
+      
+      if (timerSeconds === 3) {
+        btn3.className = "py-2 bg-zinc-850 hover:bg-zinc-800 text-xs font-bold rounded-lg border border-cyan-500/50 text-cyan-400 transition-all";
+      } else if (timerSeconds === 5) {
+        btn5.className = "py-2 bg-zinc-850 hover:bg-zinc-800 text-xs font-bold rounded-lg border border-cyan-500/50 text-cyan-400 transition-all";
+      } else if (timerSeconds === 10) {
+        btn10.className = "py-2 bg-zinc-850 hover:bg-zinc-800 text-xs font-bold rounded-lg border border-cyan-500/50 text-cyan-400 transition-all";
+      }
+    }
+
     // --- Recording Sequence ---
     async function startCountdown() {
       showStep('stepRecording');
       const recVideo = document.getElementById('recordingVideo');
       recVideo.srcObject = stream;
 
-      let countdownSeconds = 3;
       const overlay = document.getElementById('countdownOverlay');
       const text = document.getElementById('countdownText');
-      overlay.classList.remove('hidden');
-      text.textContent = countdownSeconds;
 
-      const countdownInterval = setInterval(() => {
-        countdownSeconds--;
-        if (countdownSeconds > 0) {
-          text.textContent = countdownSeconds;
-        } else {
-          clearInterval(countdownInterval);
-          overlay.classList.add('hidden');
-          startRecordingFlow();
-        }
-      }, 1000);
+      if (timerSeconds === 0) {
+        overlay.classList.add('hidden');
+        startRecordingFlow();
+      } else {
+        let countdownSeconds = timerSeconds;
+        overlay.classList.remove('hidden');
+        text.textContent = countdownSeconds;
+
+        const countdownInterval = setInterval(() => {
+          countdownSeconds--;
+          if (countdownSeconds > 0) {
+            text.textContent = countdownSeconds;
+          } else {
+            clearInterval(countdownInterval);
+            overlay.classList.add('hidden');
+            startRecordingFlow();
+          }
+        }, 1000);
+      }
     }
 
     // --- MediaRecorder init ---
