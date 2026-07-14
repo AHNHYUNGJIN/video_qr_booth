@@ -212,8 +212,8 @@
         
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
+            width: { ideal: 1920 }, // 1080p FHD ideal resolution
+            height: { ideal: 1080 },
             facingMode: 'user'
           },
           audio: true // 음성 지원 활성화
@@ -261,16 +261,27 @@
     function startRecordingFlow() {
       recordedChunks = [];
       
-      // H264 지원 코덱 우선 순위 선택
-      let options = { mimeType: 'video/webm;codecs=vp9' };
+      // 고화질 비트레이트 (5Mbps) 설정 및 코덱 매칭
+      let options = { 
+        mimeType: 'video/webm;codecs=vp9',
+        videoBitsPerSecond: 5000000
+      };
       if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options.mimeType = 'video/webm;codecs=vp8';
+        options = { 
+          mimeType: 'video/webm;codecs=vp8',
+          videoBitsPerSecond: 5000000
+        };
       }
       if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options.mimeType = 'video/webm';
+        options = { 
+          mimeType: 'video/webm',
+          videoBitsPerSecond: 5000000
+        };
       }
       if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options = {}; // 기본값 지정
+        options = { 
+          videoBitsPerSecond: 5000000
+        };
       }
 
       mediaRecorder = new MediaRecorder(stream, options);
